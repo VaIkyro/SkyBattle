@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SkyCards – Battle Loadout</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- ============================================================
+       ✅ STYLING — CLEANED, GROUPED, ORGANIZED
+       ============================================================ -->
+  <style>
+    /* ----- Layout ----- */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f0f2f5;
+    }
+
+    header {
+      background: #1a73e8;
+      color: white;
+      padding: 16px 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .container {
+      padding: 18px;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    /* ----- Panels / Cards ----- */
+    .panel {
+      background: white;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      margin-bottom: 18px;
+    }
+
+    .card-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .card {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      width: 220px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      background: #1a73e8;
+      color: white;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+
+    /* ----- Buttons ----- */
+    .btn {
+      padding: 8px 12px;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .btn.secondary {
+      background: #34a853;
+    }
+
+    .btn.ghost {
+      background: #888;
+    }
+
+    /* ----- Form Elements ----- */
+    input,
+    select {
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    /* ----- Table ----- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    th {
+      background: #fafafa;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* ----- Small Text / Utility ----- */
+    .small {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .muted {
+      color: #666;
+      font-size: 13px;
+    }
+
+    /* ----- Bar Graphs (Loadout Strengths) ----- */
+    .bar {
+      height: 6px;
+      background: #e6e6e6;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+
+    .bar-fill {
+      height: 6px;
+      background: #1a73e8;
+      border-radius: 4px;
+    }
+  </style>
+
+  <!-- Supabase JS (UMD build) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+</head>
+
+
+<!-- ============================================================
+     ✅ BODY CONTENT
+     ============================================================ -->
+<body>
+
+<header>
+  <div class="container">
+    <h1>SkyCards — Battle Loadout</h1>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     ✅ PAGE CONTENT PANELS
+     ============================================================ -->
+<div class="container">
+
+  <!-- STATUS PANEL -->
+  <div class="panel" id="statusPanel">
+    <div id="statusText" class="small">Connecting to Supabase...</div>
+  </div>
+
+
+  <!-- ============================================================
+       ✅ ADD / EDIT AIRCRAFT PANEL
+       ============================================================ -->
+  <div class="panel">
+    <h3>Add / Edit an aircraft</h3>
+
+    <!-- Row 1 -->
+    <div style="display:flex; gap:10px; flex-wrap:wrap">
+      <input id="name" placeholder="Name" style="flex:1; min-width:220px">
+      <select id="category" style="width:140px">
+        <option value="heli">Heli</option>
+        <option value="jet">Jet</option>
+        <option value="prop">Prop</option>
+      </select>
+      <input id="rarity" placeholder="Rarity (or N/A)" type="text" style="width:100px">
+      <input id="seats" placeholder="Seats (or N/A)" type="text" style="width:100px">
+    </div>
+
+    <!-- Row 2 -->
+    <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap">
+      <input id="wingspan" placeholder="Wingspan (m) or N/A" type="text" style="width:140px">
+      <input id="speed" placeholder="Speed (kt) or N/A" type="text" style="width:140px">
+      <input id="weight" placeholder="Weight (t) or N/A" type="text" style="width:140px">
+      <input id="year_made" placeholder="Year Made or N/A" type="text" style="width:120px">
+    </div>
+
+    <!-- Buttons -->
+    <div style="display:flex; gap:8px; margin-top:12px; align-items:center">
+      <label><input type="checkbox" id="ownedCheckbox">Owned?</label>
+      <button class="btn" id="saveBtn">Add & Save</button>
+      <button class="btn ghost" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+      <button class="btn secondary" id="downloadBtn">Download CSV (ac.csv)</button>
+
+      <div id="formMsg" class="small" style="margin-left:8px;"></div>
+    </div>
+
+    <div class="small" style="margin-top:8px;">
+      Notes: Names must be unique (case-insensitive).
+      Type <strong>N/A</strong> in numeric fields to mark them as unknown.
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       ✅ FILTERS + COMPUTE BUTTONS
+       ============================================================ -->
+  <div class="panel" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+    <div style="flex:1">
+      <label class="small">Filter category:</label>
+      <select id="filterCategory" style="margin-left:8px">
+        <option value="All">All</option>
+        <option value="jet">Jet</option>
+        <option value="prop">Prop</option>
+        <option value="heli">Heli</option>
+      </select>
+      <button class="btn" id="refreshBtn" style="margin-left:10px">Refresh</button>
+    </div>
+
+    <div style="display:flex; gap:8px">
+      <button class="btn" id="computeBtn">Compute Best Loadout</button>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       ✅ LOADOUT RESULTS
+       ============================================================ -->
+  <div class="panel">
+    <h3>Loadout Results</h3>
+    <div id="winChance" class="small"></div>
+    <div id="results" style="margin-top:12px;"></div>
+  </div>
+
+
+  <!-- ============================================================
+       ✅ FULL DATABASE TABLE
+       ============================================================ -->
+  <div class="panel">
+    <h3>Full Database</h3>
+
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+      <input id="tableSearch" placeholder="Search name / category / speed / etc." style="flex:1">
+      <div class="small">Click header to sort</div>
+      <button class="btn" id="clearLocalBtn" style="background:#666">Clear local cache</button>
+    </div>
+
+    <div id="tableContainer" style="margin-top:12px; max-height:480px; overflow:auto;"></div>
+    <div id="paginationControls" style="margin-top:6px; display:flex; gap:6px; align-items:center; justify-content:center;"></div>
+  </div>
+
+</div>
+
+<!-- ============================================================
+     ✅ JAVASCRIPT
+     ============================================================ -->
+<script>
+
+/* ============================================================
+     ✅ SUPABASE CONFIG
+     ============================================================ */
+const SUPABASE_URL = 'https://sjulyyqelfnvjwtdfcpp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNqdWx5eXFlbGZudmp3dGRmY3BwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1OTUzNjAsImV4cCI6MjA3ODE3MTM2MH0.2YKfXqldHH9T838xwIRpIBL-d9UJaWZujJ1RNtVzYKU';
+
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
+
+/* ============================================================
+   ✅ STATE + GLOBALS
+   ============================================================ */
+let aircraft = [];
+let currentPage = 1;
+const rowsPerPage = 20;
+let editingId = null;
+let tableSort = { col: null, asc: true };
+
+const $ = id => document.getElementById(id);
+
+
+
+/* ============================================================
+   ✅ UTILITY HELPERS
+   ============================================================ */
+
+/** Update status banner */
+function setStatus(msg, ok = true) {
+  $('statusText').innerHTML = ok
+    ? `<span style="color:green">${msg}</span>`
+    : `<span style="color:red">${msg}</span>`;
+}
+
+/** Escape HTML to prevent injection in table */
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"]/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;'
+  }[c]));
+}
+
+/** Parse numeric or N/A -> null */
+function parseValue(v) {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  if (s === '' || s.toLowerCase() === 'n/a') return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+
+
+/* ============================================================
+   ✅ DATABASE OPERATIONS
+   ============================================================ */
+
+/** Load all aircraft from Supabase */
+async function loadFromSupabase() {
+  setStatus('Loading from Supabase...');
+  try {
+    const { data, error } = await client.from('aircraft').select('*');
+    if (error) throw error;
+
+    aircraft = data.map(r => ({
+      id: r.id ?? null,
+      name: r.name ?? '',
+      category: r.category ?? '',
+      rarity: r.rarity === null ? null : Number(r.rarity),
+      seats: r.seats === null ? null : Number(r.seats),
+      wingspan: r.wingspan === null ? null : Number(r.wingspan),
+      speed: r.speed === null ? null : Number(r.speed),
+      weight: r.weight === null ? null : Number(r.weight),
+      year_made: r.year_made === null ? null : Number(r.year_made),
+      owned: r.owned ?? false
+    }));
+
+    setStatus(`Loaded ${aircraft.length} rows from Supabase.`);
+    renderTable();
+
+  } catch (err) {
+    console.error(err);
+    setStatus('Could not load from Supabase. Check settings.', false);
+  }
+}
+
+/** Name must be unique, case-insensitive */
+function isDuplicateName(name, excludeId = null) {
+  if (!name) return false;
+  const n = name.trim().toLowerCase();
+  return aircraft.some(a =>
+    a.name &&
+    a.name.trim().toLowerCase() === n &&
+    (excludeId === null || a.id !== excludeId)
+  );
+}
+
+/** Insert new aircraft into Supabase + memory */
+async function insertAircraftRemote(obj) {
+  try {
+    const { data, error } = await client.from('aircraft').insert([obj]).select();
+    if (error) throw error;
+
+    if (data && data.length) {
+      const r = data[0];
+
+      aircraft.push({
+        id: r.id ?? null,
+        name: r.name ?? '',
+        category: r.category ?? '',
+        rarity: r.rarity === null ? null : Number(r.rarity),
+        seats: r.seats === null ? null : Number(r.seats),
+        wingspan: r.wingspan === null ? null : Number(r.wingspan),
+        speed: r.speed === null ? null : Number(r.speed),
+        weight: r.weight === null ? null : Number(r.weight),
+        year_made: r.year_made === null ? null : Number(r.year_made),
+        owned: r.owned ?? false
+      });
+
+      return { ok: true, row: r };
+    }
+
+    return { ok: false, error: 'No data returned' };
+
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: e.message };
+  }
+}
+
+/** Update existing aircraft in Supabase + memory */
+async function updateAircraftRemote(id, obj) {
+  try {
+    const { data, error } = await client.from('aircraft')
+      .update(obj).eq('id', id).select();
+
+    if (error) throw error;
+
+    if (data && data.length) {
+      const r = data[0];
+      const idx = aircraft.findIndex(x => x.id === r.id);
+
+      if (idx !== -1) {
+        aircraft[idx] = {
+          id: r.id,
+          name: r.name,
+          category: r.category,
+          rarity: r.rarity === null ? null : Number(r.rarity),
+          seats: r.seats === null ? null : Number(r.seats),
+          wingspan: r.wingspan === null ? null : Number(r.wingspan),
+          speed: r.speed === null ? null : Number(r.speed),
+          weight: r.weight === null ? null : Number(r.weight),
+          year_made: r.year_made === null ? null : Number(r.year_made),
+          owned: r.owned ?? false
+        };
+      }
+
+      return { ok: true, row: r };
+    }
+
+    return { ok: false, error: 'No data returned' };
+
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: e.message };
+  }
+}
+
+/** Toggle owned checkbox in DB + memory */
+async function toggleOwned(id) {
+  const row = aircraft.find(a => a.id === id);
+  if (!row) return;
+
+  const newValue = !row.owned;
+
+  const { error } = await client
+    .from('aircraft')
+    .update({ owned: newValue })
+    .eq('id', id);
+
+  if (error) {
+    alert("Failed to toggle owned: " + error.message);
+    return;
+  }
+
+  row.owned = newValue;
+  renderTable();
+}
+
+
+
+/* ============================================================
+   ✅ EDIT / ADD AIRCRAFT — UI LOGIC
+   ============================================================ */
+
+/** Enter edit mode */
+function enterEditMode(rowId) {
+  const row = aircraft.find(r => r.id === rowId);
+  if (!row) return alert("Row not found");
+
+  editingId = rowId;
+
+  $('name').value = row.name ?? '';
+  $('category').value = row.category ?? 'heli';
+  $('rarity').value = row.rarity == null ? 'N/A' : String(row.rarity);
+  $('seats').value = row.seats == null ? 'N/A' : String(row.seats);
+  $('wingspan').value = row.wingspan == null ? 'N/A' : String(row.wingspan);
+  $('speed').value = row.speed == null ? 'N/A' : String(row.speed);
+  $('weight').value = row.weight == null ? 'N/A' : String(row.weight);
+  $('year_made').value = row.year_made == null ? 'N/A' : String(row.year_made);
+
+  $('ownedCheckbox').checked = row.owned ? true : false;
+
+  $('saveBtn').innerText = 'Update Aircraft';
+  $('cancelEditBtn').style.display = 'inline-block';
+  $('formMsg').innerText = `Editing ID ${rowId} — changes will update this row.`;
+}
+
+/** Exit edit mode */
+function exitEditMode() {
+  editingId = null;
+
+  $('name').value = '';
+  $('category').value = 'heli';
+  $('rarity').value = '';
+  $('seats').value = '';
+  $('wingspan').value = '';
+  $('speed').value = '';
+  $('weight').value = '';
+  $('year_made').value = '';
+  $('ownedCheckbox').checked = false;
+
+  $('saveBtn').innerText = 'Add & Save';
+  $('cancelEditBtn').style.display = 'none';
+  $('formMsg').innerText = '';
+}
+
+
+
+/* ============================================================
+   ✅ SAVE BUTTON HANDLER (INSERT OR UPDATE)
+   ============================================================ */
+$('saveBtn').addEventListener('click', async () => {
+
+  const obj = {
+    name: $('name').value.trim(),
+    category: $('category').value.trim(),
+    rarity: parseValue($('rarity').value),
+    seats: parseValue($('seats').value),
+    wingspan: parseValue($('wingspan').value),
+    speed: parseValue($('speed').value),
+    weight: parseValue($('weight').value),
+    year_made: parseValue($('year_made').value),
+    owned: $('ownedCheckbox').checked
+  };
+
+  if (!obj.name) {
+    $('formMsg').innerText = 'Name is required';
+    return;
+  }
+
+  /* ----- INSERT NEW ----- */
+  if (editingId === null) {
+    if (isDuplicateName(obj.name)) {
+      $('formMsg').innerText = 'Duplicate name exists — cannot add.';
+      return;
+    }
+
+    $('formMsg').innerText = 'Saving...';
+    const res = await insertAircraftRemote(obj);
+
+    if (res.ok) {
+      $('formMsg').innerText = '✅ Added and saved.';
+      exitEditMode();
+      renderTable();
+      setStatus(`Added ${obj.name}`, true);
+      setTimeout(() => $('formMsg').innerText = '', 2000);
+    } else {
+      $('formMsg').innerText = '❌ Save failed: ' + res.error;
+      setStatus('Insert failed: ' + res.error, false);
+    }
+
+  } else {
+    /* ----- UPDATE EXISTING ----- */
+    if (isDuplicateName(obj.name, editingId)) {
+      $('formMsg').innerText = 'Duplicate name exists for another row — cannot update.';
+      return;
+    }
+
+    $('formMsg').innerText = 'Updating...';
+    const res = await updateAircraftRemote(editingId, obj);
+
+    if (res.ok) {
+      $('formMsg').innerText = '✅ Updated.';
+      exitEditMode();
+      renderTable();
+      setStatus(`Updated ${obj.name}`, true);
+      setTimeout(() => $('formMsg').innerText = '', 2000);
+    } else {
+      $('formMsg').innerText = '❌ Update failed: ' + res.error;
+      setStatus('Update failed: ' + res.error, false);
+    }
+  }
+});
+
+/* Cancel edit */
+$('cancelEditBtn').addEventListener('click', exitEditMode);
+
+
+
+/* ============================================================
+   ✅ TABLE RENDERING + SORTING + PAGINATION
+   ============================================================ */
+function renderTable() {
+  const search = ($('tableSearch')?.value || '').toLowerCase().trim();
+  const filterCat = $('filterCategory').value;
+
+  let rows = aircraft.slice();
+
+  /* ----- Filter ----- */
+  if (filterCat && filterCat !== 'All') {
+    rows = rows.filter(r => r.category === filterCat);
+  }
+
+  /* ----- Search ----- */
+  if (search) {
+    rows = rows.filter(r =>
+      Object.values(r).some(v =>
+        String(v).toLowerCase().includes(search)
+      )
+    );
+  }
+
+  /* ----- Sorting ----- */
+  if (tableSort.col) {
+    rows.sort((a, b) => {
+      const A = a[tableSort.col], B = b[tableSort.col];
+
+      if (A == null && B == null) return 0;
+      if (A == null) return tableSort.asc ? -1 : 1;
+      if (B == null) return tableSort.asc ? 1 : -1;
+
+      if (!isNaN(Number(A)) && !isNaN(Number(B)))
+        return tableSort.asc ? (A - B) : (B - A);
+
+      return tableSort.asc
+        ? String(A).localeCompare(String(B))
+        : String(B).localeCompare(String(A));
+    });
+
+  } else {
+    /* Default sort: category then name */
+    rows.sort((a, b) => {
+      const c = String(a.category).localeCompare(String(b.category));
+      return c !== 0 ? c : String(a.name).localeCompare(String(b.name));
+    });
+  }
+
+  /* ----- Pagination ----- */
+  const totalRows = rows.length;
+  const totalPages = Math.ceil(totalRows / rowsPerPage);
+  if (currentPage > totalPages) currentPage = totalPages || 1;
+
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const pagedRows = rows.slice(start, end);
+
+
+  /* ----- Build Table ----- */
+  let html = '<table><thead><tr>';
+  const cols = ['name','category','rarity','seats','wingspan','speed','weight','year_made','owned'];
+  const labels = ['Name','Category','Rarity','Seats','Wingspan','Speed','Weight','Year','Owned'];
+
+  cols.forEach((c,i) => {
+    const ind = tableSort.col === c ? (tableSort.asc ? ' ▲' : ' ▼') : '';
+    html += `<th onclick="toggleSort('${c}')">${labels[i]}${ind}</th>`;
+  });
+  html += '<th>Actions</th></tr></thead><tbody>';
+
+  /* ----- Rows ----- */
+  if (pagedRows.length === 0) {
+    html += `<tr><td colspan="${cols.length+1}" class="muted">No records</td></tr>`;
+  } else {
+    pagedRows.forEach(r => {
+      html += `
+        <tr>
+          <td>${escapeHtml(r.name)}</td>
+          <td>${escapeHtml(r.category)}</td>
+          <td>${r.rarity == null ? 'N/A' : Number(r.rarity).toFixed(2)}</td>
+          <td>${r.seats == null ? 'N/A' : r.seats}</td>
+          <td>${r.wingspan == null ? 'N/A' : Number(r.wingspan).toFixed(2)}</td>
+          <td>${r.speed == null ? 'N/A' : Number(r.speed).toFixed(0)}</td>
+          <td>${r.weight == null ? 'N/A' : Number(r.weight).toFixed(2)}</td>
+          <td>${r.year_made == null ? 'N/A' : r.year_made}</td>
+          <td>${r.owned ? '✅' : '❌'}</td>
+          <td class="row-actions">
+            <button class="btn" onclick="enterEditMode(${r.id})">Edit</button>
+          </td>
+        </tr>`;
+    });
+  }
+
+  html += '</tbody></table>';
+  $('tableContainer').innerHTML = html;
+
+
+  /* ----- Pagination controls ----- */
+  $('paginationControls').innerHTML = `
+    <button class="btn ghost" onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>
+      Previous
+    </button>
+    <span class="small">Page ${currentPage} of ${totalPages || 1}</span>
+    <button class="btn ghost" onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>
+      Next
+    </button>
+  `;
+}
+
+
+
+/* ============================================================
+   ✅ TABLE CONTROLS — EVENTS
+   ============================================================ */
+$('tableSearch')?.addEventListener('input', renderTable);
+$('filterCategory')?.addEventListener('change', renderTable);
+
+$('clearLocalBtn')?.addEventListener('click', () => {
+  if (!confirm('Clear in-memory list and UI? This does NOT delete Supabase data.')) return;
+  aircraft = [];
+  renderTable();
+  setStatus('Cleared in-memory data (Supabase unchanged).', true);
+});
+
+
+
+/* ============================================================
+   ✅ DOWNLOAD CSV (CURRENT MEMORY)
+   ============================================================ */
+$('downloadBtn').addEventListener('click', () => {
+  if (!aircraft.length) return alert('No data to download.');
+
+  const rows = aircraft.slice().sort((a,b) => {
+    const c = String(a.category).toLowerCase()
+      .localeCompare(String(b.category).toLowerCase());
+
+    return c !== 0
+      ? c
+      : String(a.name).toLowerCase().localeCompare(String(b.name).toLowerCase());
+  });
+
+  let csv = 'name,category,rarity,seats,wingspan,speed,weight,year_made\n';
+
+  rows.forEach(r => {
+    const fields = [
+      r.name ?? '',
+      r.category ?? '',
+      r.rarity == null ? 'N/A' : Number(r.rarity).toFixed(2),
+      r.seats == null ? 'N/A' : String(r.seats),
+      r.wingspan == null ? 'N/A' : Number(r.wingspan).toFixed(2),
+      r.speed == null ? 'N/A' : Number(r.speed).toFixed(0),
+      r.weight == null ? 'N/A' : Number(r.weight).toFixed(2),
+      r.year_made == null ? 'N/A' : String(r.year_made)
+    ];
+
+    csv += fields.map(f => {
+      const s = (f === undefined || f === null) ? '' : String(f);
+      return (s.includes(',') || s.includes('"'))
+        ? `"${s.replace(/"/g,'""')}"`
+        : s;
+    }).join(',') + '\n';
+  });
+
+  const blob = new Blob([csv], { type:'text/csv' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'ac.csv';
+  link.click();
+});
+
+/* ============================================================
+     ✅ LOADOUT ENGINE — CLEAN, ORGANIZED, SAME LOGIC
+     ============================================================ */
+
+/* ============================================================
+   ✅ COMPUTE BEST LOADOUT
+   Called when user clicks "Compute Best Loadout"
+   ============================================================ */
+$('computeBtn').addEventListener('click', computeBestLoadout);
+
+function computeBestLoadout() {
+  const ownedAircraft = aircraft.filter(a => a.owned);
+  if (ownedAircraft.length < 5) {
+    $('results').innerHTML = `<span class="muted">Not enough owned aircraft (have ${ownedAircraft.length}, need 5).</span>`;
+    $('winChance').innerHTML = '';
+    return;
+  }
+
+  const stats = ['rarity','seats','wingspan','speed','weight','year_made'];
+  const mins = {}, maxs = {};
+  stats.forEach(k => {
+    const vals = ownedAircraft.map(a => a[k]).filter(v => v != null);
+    mins[k] = vals.length ? Math.min(...vals) : 0;
+    maxs[k] = vals.length ? Math.max(...vals) : 1;
+  });
+
+  function norm(value, key) {
+    if (value == null) return 0.5;
+    const min = mins[key], max = maxs[key];
+    if (max === min) return 1; // if all same, treat as max
+    return (value - min) / (max - min);
+  }
+
+  // directional keys
+  const directionalKeys = [];
+  stats.forEach(k => directionalKeys.push(k+'_high', k+'_low'));
+
+  // compute directional normalized values
+  const scored = ownedAircraft.map(a => {
+    const directional = {};
+    stats.forEach(k => {
+      directional[k+'_high'] = norm(a[k], k);
+      directional[k+'_low']  = 1 - norm(a[k], k);
+    });
+    return { ...a, directional };
+  });
+
+  // for each directional stat, find the single best aircraft
+  const bestForStat = {};
+  directionalKeys.forEach(k => {
+    bestForStat[k] = scored.reduce((best, c) => {
+      if (!best || c.directional[k] > best.directional[k]) return c;
+      return best;
+    }, null);
+  });
+
+  // count coverage: map aircraft id -> array of directional stats it is best at
+  const coverageMap = new Map();
+  directionalKeys.forEach(k => {
+    const c = bestForStat[k];
+    if (!c) return;
+    if (!coverageMap.has(c.id)) coverageMap.set(c.id, []);
+    coverageMap.get(c.id).push(k);
+  });
+
+  // pick top 5 aircraft by number of directional stats they cover
+  const topAircraft = [...coverageMap.entries()]
+    .sort((a,b) => b[1].length - a[1].length)
+    .slice(0,5)
+    .map(([id, keys]) => {
+      const c = scored.find(a => a.id === id);
+      return { ...c, highlight: keys };
+    });
+
+  // render cards
+  const labels = {
+    rarity_high: 'Rarity ↑', rarity_low: 'Rarity ↓',
+    seats_high: 'Seats ↑', seats_low: 'Seats ↓',
+    wingspan_high: 'Wingspan ↑', wingspan_low: 'Wingspan ↓',
+    speed_high: 'Speed ↑', speed_low: 'Speed ↓',
+    weight_high: 'Weight ↑', weight_low: 'Weight ↓',
+    year_made_high: 'Year ↑', year_made_low: 'Year ↓'
+  };
+
+  function card(c) {
+    let html = `<div class="card"><div><b>${escapeHtml(c.name)}</b></div><div class="small">${escapeHtml(c.category)}</div>`;
+    c.highlight.forEach(k => {
+      const val = k.endsWith('_low') ? c[k.replace('_low','')] : c[k.replace('_high','')];
+      html += `<div class="small" style="margin-top:4px">${labels[k]}</div>
+               <div class="bar"><div class="bar-fill" style="width:${c.directional[k]*100}%"></div></div>`;
+    });
+    html += '</div>';
+    return html;
+  }
+
+  $('results').innerHTML = `<div class="card-grid">${topAircraft.map(c=>card(c)).join('')}</div>`;
+
+  // simple win chance estimate
+  const totalCoverage = topAircraft.reduce((sum,c)=>sum+c.highlight.length,0);
+  const percent = Math.round(totalCoverage / 12 * 100);
+  $('winChance').innerHTML = `Estimated Win Chance: <b>${percent}%</b>`;
+}
+
+
+
+
+/* ============================================================
+   ✅ FINAL EVENT WIRING
+   ============================================================ */
+
+function toggleSort(col) {
+  if (tableSort.col === col) {
+    tableSort.asc = !tableSort.asc;
+  } else {
+    tableSort.col = col;
+    tableSort.asc = true;
+  }
+  renderTable();
+}
+
+function changePage(dir) {
+  currentPage += dir;
+  if (currentPage < 1) currentPage = 1;
+  renderTable();
+}
+
+$('refreshBtn').addEventListener('click', loadFromSupabase);
+
+
+
+/* ============================================================
+   ✅ INITIAL LOAD
+   ============================================================ */
+loadFromSupabase();
+
+</script>
+</body>
+</html>
